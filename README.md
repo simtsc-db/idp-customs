@@ -35,17 +35,14 @@ PDFs/scans -> UC Volume -> Lakeflow SDP
 | `src/02_governance.sql` | Tags and Genie column comments |
 | `src/03_refresh_lakebase.py` | Lakebase synced-table refresh |
 | `src/04_eval/evaluate.py` | Accuracy and cost scorecard |
-| `src/05_genie/` | Genie space definition |
 | `app/` | AppKit review app (Lakebase, Files) |
-| `resources/` | Bundle resources |
+| `resources/` | Bundle resources, incl. the Genie space definition |
 
 ## Setup
 
 Needs Databricks CLI >= 1.20, Node 22, Python 3, a CLI profile, and package
 mirrors in `PIP_INDEX_URL` and `NPM_REGISTRY`. The catalog is required
 (`--var catalog=<catalog>` or `.databricks/bundle/dev/variable-overrides.json`).
-`src/05_genie/permit_review.genie.json` names the catalog in its table
-identifiers; update it if yours differs.
 
 ```bash
 scripts/stage_wheels.sh <profile> <catalog>    # once: datagen wheels -> UC volume

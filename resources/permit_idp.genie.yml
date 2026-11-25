@@ -5,4 +5,207 @@ resources:
       description: "Ask about trader permit packs: auto-clear rate, FTA origin-rule exceptions, failing checks, high-priority packs. Synthetic demo data."
       warehouse_id: ${var.warehouse_id}
       parent_path: /Workspace/Users/${workspace.current_user.userName}
-      file_path: ../src/05_genie/permit_review.genie.json
+      # Genie serialized space (version 2); tables resolve from the catalog/schema variables.
+      serialized_space: |
+        {
+          "version": 2,
+          "config": {
+            "sample_questions": [
+              {
+                "id": "a0000000000000000000000000000001",
+                "question": [
+                  "Which importers had the most FTA origin-rule exceptions in the last 90 days?"
+                ]
+              },
+              {
+                "id": "a0000000000000000000000000000002",
+                "question": [
+                  "What share of permit packs were auto-cleared?"
+                ]
+              },
+              {
+                "id": "a0000000000000000000000000000003",
+                "question": [
+                  "Which automated checks fail most often?"
+                ]
+              },
+              {
+                "id": "a0000000000000000000000000000004",
+                "question": [
+                  "Show the high-priority packs and why they were flagged"
+                ]
+              },
+              {
+                "id": "a0000000000000000000000000000005",
+                "question": [
+                  "What is the declared value of packs whose preferential claim breaches an FTA rule, by scheme and currency?"
+                ]
+              }
+            ]
+          },
+          "data_sources": {
+            "tables": [
+              {
+                "identifier": "${var.catalog}.${var.schema}.gold_pack_checks",
+                "column_configs": [
+                  {
+                    "column_name": "category",
+                    "enable_format_assistance": true,
+                    "enable_entity_matching": true
+                  },
+                  {
+                    "column_name": "check_name",
+                    "enable_format_assistance": true,
+                    "enable_entity_matching": true,
+                    "synonyms": [
+                      "rule",
+                      "check",
+                      "validation"
+                    ]
+                  }
+                ]
+              },
+              {
+                "identifier": "${var.catalog}.${var.schema}.gold_permit_drafts",
+                "column_configs": [
+                  {
+                    "column_name": "exporter_country",
+                    "enable_format_assistance": true,
+                    "enable_entity_matching": true
+                  },
+                  {
+                    "column_name": "importer_name",
+                    "enable_format_assistance": true,
+                    "enable_entity_matching": true,
+                    "synonyms": [
+                      "trader",
+                      "importer",
+                      "declarant"
+                    ]
+                  },
+                  {
+                    "column_name": "preferential_scheme",
+                    "enable_format_assistance": true,
+                    "enable_entity_matching": true,
+                    "synonyms": [
+                      "FTA",
+                      "free trade agreement",
+                      "scheme"
+                    ]
+                  },
+                  {
+                    "column_name": "status",
+                    "enable_format_assistance": true,
+                    "enable_entity_matching": true
+                  }
+                ]
+              },
+              {
+                "identifier": "${var.catalog}.${var.schema}.gold_permit_items"
+              },
+              {
+                "identifier": "${var.catalog}.${var.schema}.ref_fta_rules"
+              }
+            ]
+          },
+          "instructions": {
+            "text_instructions": [
+              {
+                "id": "b0000000000000000000000000000001",
+                "content": [
+                  "Domain: customs Trade Division review of trader permit packs (synthetic demo data). A pack = commercial invoice + packing list + Certificate of Origin (CoO), identified by pack_id.\n",
+                  "gold_permit_drafts has one row per pack: status AUTO_CLEARED (all checks passed, no officer action) or NEEDS_REVIEW (at least one failed check). 'Auto-cleared rate' = AUTO_CLEARED packs / all packs.\n",
+                  "gold_pack_checks has one row per pack per check; passed = false means an exception. FTA origin-rule exceptions are rows with category = 'fta_rule' and passed = false (codes R01-R04). Cross-document mismatches are category = 'cross_document'.\n",
+                  "Time-window questions ('this month', 'last 90 days') filter on gold_permit_drafts.shipment_date. Data covers September to November 2026.\n",
+                  "declared_value is in the invoice currency (USD, SGD or CNY); never sum across currencies without grouping by currency.\n",
+                  "Importer = trader. Always show pack_id when listing packs."
+                ]
+              }
+            ],
+            "example_question_sqls": [
+              {
+                "id": "c0000000000000000000000000000001",
+                "question": [
+                  "Which importers had the most FTA origin-rule exceptions in the last 90 days?"
+                ],
+                "sql": [
+                  "SELECT d.importer_name, COUNT(*) AS fta_rule_exceptions, COUNT(DISTINCT d.pack_id) AS packs_affected\n",
+                  "FROM ${var.catalog}.${var.schema}.gold_pack_checks c\n",
+                  "JOIN ${var.catalog}.${var.schema}.gold_permit_drafts d ON d.pack_id = c.pack_id\n",
+                  "WHERE c.category = 'fta_rule' AND NOT c.passed\n",
+                  "  AND d.shipment_date >= date_sub(current_date(), 90)\n",
+                  "GROUP BY d.importer_name ORDER BY fta_rule_exceptions DESC"
+                ]
+              },
+              {
+                "id": "c0000000000000000000000000000002",
+                "question": [
+                  "What share of permit packs were auto-cleared?"
+                ],
+                "sql": [
+                  "SELECT COUNT(*) AS packs, COUNT_IF(status = 'AUTO_CLEARED') AS auto_cleared,\n",
+                  "  ROUND(100.0 * COUNT_IF(status = 'AUTO_CLEARED') / COUNT(*), 1) AS auto_cleared_pct\n",
+                  "FROM ${var.catalog}.${var.schema}.gold_permit_drafts"
+                ]
+              },
+              {
+                "id": "c0000000000000000000000000000003",
+                "question": [
+                  "Which automated checks fail most often?"
+                ],
+                "sql": [
+                  "SELECT check_code, check_name, category, COUNT(*) AS failures\n",
+                  "FROM ${var.catalog}.${var.schema}.gold_pack_checks WHERE NOT passed\n",
+                  "GROUP BY ALL ORDER BY failures DESC"
+                ]
+              }
+            ],
+            "join_specs": [
+              {
+                "id": "d0000000000000000000000000000001",
+                "left": {
+                  "identifier": "${var.catalog}.${var.schema}.gold_permit_drafts",
+                  "alias": "gold_permit_drafts"
+                },
+                "right": {
+                  "identifier": "${var.catalog}.${var.schema}.gold_pack_checks",
+                  "alias": "gold_pack_checks"
+                },
+                "sql": [
+                  "`gold_permit_drafts`.`pack_id` = `gold_pack_checks`.`pack_id`",
+                  "--rt=FROM_RELATIONSHIP_TYPE_ONE_TO_MANY--"
+                ]
+              },
+              {
+                "id": "d0000000000000000000000000000002",
+                "left": {
+                  "identifier": "${var.catalog}.${var.schema}.gold_permit_drafts",
+                  "alias": "gold_permit_drafts"
+                },
+                "right": {
+                  "identifier": "${var.catalog}.${var.schema}.gold_permit_items",
+                  "alias": "gold_permit_items"
+                },
+                "sql": [
+                  "`gold_permit_drafts`.`pack_id` = `gold_permit_items`.`pack_id`",
+                  "--rt=FROM_RELATIONSHIP_TYPE_ONE_TO_MANY--"
+                ]
+              },
+              {
+                "id": "d0000000000000000000000000000003",
+                "left": {
+                  "identifier": "${var.catalog}.${var.schema}.gold_permit_drafts",
+                  "alias": "gold_permit_drafts"
+                },
+                "right": {
+                  "identifier": "${var.catalog}.${var.schema}.ref_fta_rules",
+                  "alias": "ref_fta_rules"
+                },
+                "sql": [
+                  "`gold_permit_drafts`.`preferential_scheme` = `ref_fta_rules`.`fta_code`",
+                  "--rt=FROM_RELATIONSHIP_TYPE_MANY_TO_ONE--"
+                ]
+              }
+            ]
+          }
+        }

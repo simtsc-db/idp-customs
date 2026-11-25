@@ -10,8 +10,6 @@ from pathlib import Path
 
 space = sys.argv[1]
 prof = sys.argv[2]
-spec = json.loads(Path(__file__).parent.parent.joinpath("src/05_genie/permit_review.genie.json").read_text())
-questions = [q["question"][0] for q in spec["config"]["sample_questions"]]
 
 
 def cli(*args):
@@ -20,6 +18,9 @@ def cli(*args):
         raise RuntimeError(out.stderr.strip()[:500])
     return json.loads(out.stdout) if out.stdout.strip() else {}
 
+
+space_def = json.loads(cli("genie", "get-space", space, "--include-serialized-space")["serialized_space"])
+questions = [q["question"][0] for q in space_def["config"]["sample_questions"]]
 
 lines = ["# Genie Q&A evidence", "", f"Space `{space}` (warehouse-backed, synthetic data). Generated {time.strftime('%Y-%m-%d %H:%M')}.", ""]
 for q in questions:
