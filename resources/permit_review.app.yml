@@ -1,0 +1,19 @@
+resources:
+  apps:
+    permit_review_app:
+      name: permit-review
+      description: "Officer review queue for trader permit packs (synthetic demo). Reads gold tables synced to Lakebase; writes officer decisions to Lakebase."
+      source_code_path: ../app_dist  # built by scripts/build_app.sh
+      lifecycle:
+        started: true
+      resources:
+        - name: files
+          uc_securable:
+            securable_full_name: ${var.catalog}.${var.schema}.permit_packs
+            securable_type: VOLUME
+            permission: READ_VOLUME
+        - name: postgres
+          postgres:
+            branch: ${resources.postgres_projects.permit_review.name}/branches/production
+            database: ${resources.postgres_projects.permit_review.name}/branches/production/databases/databricks-postgres
+            permission: CAN_CONNECT_AND_CREATE

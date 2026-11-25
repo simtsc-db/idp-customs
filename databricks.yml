@@ -1,0 +1,34 @@
+# Permit Pack Check: intelligent document processing for customs trade permits (synthetic demo)
+bundle:
+  name: customs_permit_idp
+
+variables:
+  catalog:
+    description: Unity Catalog catalog
+    default: sg_pubsec_catalog
+  schema:
+    description: Schema for all demo objects
+    default: customs_permit_idp
+  warehouse_id:
+    description: Serverless SQL warehouse for the app, Genie and evaluation
+    lookup:
+      warehouse: "Serverless Starter Warehouse"
+  lakebase_project:
+    description: Lakebase Autoscaling project id used by the review app
+    default: customs-permit-idp
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    default: true
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+sync:
+  # app_dist/ is build output (gitignored) but must be uploaded for the app.
+  include:
+    - app_dist/**
+  exclude:
+    - app/**

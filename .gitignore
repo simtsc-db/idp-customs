@@ -1,0 +1,17 @@
+.venv/
+data_out/
+.databricks/
+__pycache__/
+*.pyc
+.DS_Store
+deck/node_modules/
+node_modules/
+app/dist/
+app/client/dist/
+app/.env
+app_dist/
+# customer-specific material stays local (public repo)
+docs/
+deck/
+evidence/
+.databricks/

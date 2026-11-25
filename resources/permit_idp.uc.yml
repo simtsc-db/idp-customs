@@ -1,0 +1,19 @@
+resources:
+  schemas:
+    permit_idp:
+      catalog_name: ${var.catalog}
+      name: ${var.schema}
+      comment: "Permit Pack Check demo (synthetic data only): trader permit packs -> IDP -> FTA checks -> officer review"
+  volumes:
+    permit_packs:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.permit_idp.name}
+      name: permit_packs
+      volume_type: MANAGED
+      comment: "inbox/<pack_id>/*.pdf|png trader documents; reference/ FTA rules; ground_truth/ for evaluation"
+    libs:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.permit_idp.name}
+      name: libs
+      volume_type: MANAGED
+      comment: "Pinned Python wheels (from the Databricks PyPI proxy) for the serverless datagen task"

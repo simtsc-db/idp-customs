@@ -1,0 +1,8 @@
+resources:
+  genie_spaces:
+    permit_review_genie:
+      title: "Permit Pack Check - Trade Division"
+      description: "Ask about trader permit packs: auto-clear rate, FTA origin-rule exceptions, failing checks, high-priority packs. Synthetic demo data."
+      warehouse_id: ${var.warehouse_id}
+      parent_path: /Workspace/Users/${workspace.current_user.userName}
+      file_path: ../src/05_genie/permit_review.genie.json

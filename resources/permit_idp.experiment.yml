@@ -1,0 +1,5 @@
+resources:
+  experiments:
+    # Permit Pack Check: field accuracy vs ground truth, defect recall, cost per pack
+    permit_idp_eval:
+      name: /Users/${workspace.current_user.userName}/permit_idp_eval

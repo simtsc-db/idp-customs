@@ -1,0 +1,16 @@
+resources:
+  pipelines:
+    permit_idp_pipeline:
+      name: "Permit Pack Check - IDP medallion pipeline"
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.permit_idp.name}
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      root_path: ../src/01_pipeline
+      configuration:
+        catalog: ${var.catalog}
+        schema: ${var.schema}
+      libraries:
+        - glob:
+            include: ../src/01_pipeline/transformations/**
