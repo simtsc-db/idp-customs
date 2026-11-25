@@ -1,8 +1,4 @@
--- Layer: silver
--- Silver: classify each document, then extract a typed schema per document type.
--- ai_extract v2.1 returns value + confidence_score + citation_ids per field.
--- Each AI call runs once per document; results are persisted, never re-run on query.
-
+-- Silver: document type (ai_classify) and plain text.
 CREATE OR REFRESH STREAMING TABLE silver_documents (
   CONSTRAINT parsed_without_error EXPECT (parse_error IS NULL),
   CONSTRAINT recognised_document_type EXPECT (doc_type IN ('commercial_invoice', 'packing_list', 'certificate_of_origin')),

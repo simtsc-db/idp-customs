@@ -379,7 +379,7 @@ export function ReviewPage() {
 
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Fetch inside the effect; state is only set in the async callback (and ignored after unmount/switch).
+  // Set state only in the async callback; ignore stale responses.
   useEffect(() => {
     let cancelled = false;
     void Promise.allSettled([api.summary(), api.packs(status)]).then(([s, q]) => {

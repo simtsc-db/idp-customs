@@ -1,7 +1,4 @@
-# Lakebase (Autoscaling Postgres) serving layer for the officer review app.
-# Gold tables are synced read-only into Postgres (UC entries lb_* sit next to the
-# source tables, so no extra catalog is needed); the app owns
-# schema "app" for officer decisions (created by the app service principal).
+# Lakebase for the review app: gold tables synced read-only (lb_*); the app owns schema review_app.
 resources:
   postgres_projects:
     permit_review:

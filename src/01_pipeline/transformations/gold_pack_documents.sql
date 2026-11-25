@@ -1,7 +1,4 @@
--- Layer: gold
--- Gold: pack-level reconciliation, FTA rule checks, auto-populated permit drafts.
--- Pure SQL over persisted extractions: no AI calls here, so re-running is cheap.
-
+-- Gold: one row per pack joining invoice, packing list and CoO.
 CREATE OR REFRESH MATERIALIZED VIEW gold_pack_documents
 COMMENT 'One row per permit pack joining the extracted invoice, packing list and Certificate of Origin. Basis for all checks.'
 AS

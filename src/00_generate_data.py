@@ -1,18 +1,8 @@
-"""Synthetic permit-pack generator (customer-safe, deterministic).
+"""Synthetic permit packs (invoice + packing list + CoO) for the demo.
 
-Produces 40 permit packs. Each pack = commercial invoice + packing list +
-Certificate of Origin (CoO). Invoices use 5 layouts, ~10% of packs are
-Chinese/bilingual, ~10% of documents are scanned-style PNGs, ~30% of packs
-carry planted defects. Ground truth for every field and defect is written
-alongside the documents for MLflow scoring.
-
-All companies, UENs, people and certificate numbers are fictional.
-FTA rules are simplified and illustrative, not legal guidance.
-
-Runs as the first task of the Lakeflow job `permit_idp_demo` (serverless),
-writing straight into the UC volume /Volumes/<catalog>/<schema>/permit_packs.
-Idempotent: existing packs are left untouched so Auto Loader never sees
-rewritten files; pass --overwrite only for a clean rebuild.
+40 packs, 5 invoice layouts, ~10% Chinese/bilingual, ~10% scans, ~30% with planted
+defects, plus ground truth. All entities are fictional; FTA rules are illustrative.
+Job task: writes to /Volumes/<catalog>/<schema>/permit_packs; skips existing packs.
 """
 import argparse, csv, json, random, shutil
 from datetime import date, timedelta
@@ -32,9 +22,7 @@ pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
 SEED = 20261125
 N_PACKS = 40
 
-# --------------------------------------------------------------------------
 # Reference data (fictional entities; real public HS codes)
-# --------------------------------------------------------------------------
 IMPORTERS = [  # (name, synthetic UEN)
     ("Tanjong Halcyon Imports Pte Ltd", "T26LL0001A"),
     ("Pasir Marigold Trading Pte Ltd", "T26LL0002B"),
@@ -123,9 +111,7 @@ ZH_LAYOUT = dict(title="商业发票 COMMERCIAL INVOICE", inv="发票号 Invoice
                  head=colors.HexColor("#8B1E1E"), font="STSong-Light")
 
 
-# --------------------------------------------------------------------------
 # Pack model
-# --------------------------------------------------------------------------
 def build_pack(n, rng):
     pack_id = f"PP-{n:04d}"
     defects = DEFECTS.get(n, [])
@@ -209,9 +195,7 @@ def build_pack(n, rng):
                 invoice=invoice, packing_list=packing_list, coo=coo)
 
 
-# --------------------------------------------------------------------------
 # Rendering
-# --------------------------------------------------------------------------
 def _styles(font):
     return (ParagraphStyle("t", fontName=font, fontSize=16, leading=20),
             ParagraphStyle("b", fontName=font, fontSize=9, leading=12))
@@ -321,7 +305,6 @@ def to_scan(pdf_path, png_path, rng):
     pdf_path.unlink()
 
 
-# --------------------------------------------------------------------------
 def main(out, overwrite=False):
     rng = random.Random(SEED)
     scan_rng = random.Random(SEED + 1)  # separate stream: skipping a pack never shifts the data
@@ -379,7 +362,7 @@ def main(out, overwrite=False):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--catalog", default="sg_pubsec_catalog")
+    ap.add_argument("--catalog", required=True)
     ap.add_argument("--schema", default="customs_permit_idp")
     ap.add_argument("--out", default=None, help="override output dir (e.g. local test)")
     ap.add_argument("--overwrite", action="store_true")

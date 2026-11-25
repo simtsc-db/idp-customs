@@ -1,7 +1,4 @@
--- Layer: gold
--- Gold: pack-level reconciliation, FTA rule checks, auto-populated permit drafts.
--- Pure SQL over persisted extractions: no AI calls here, so re-running is cheap.
-
+-- Gold: 11 cross-document and FTA rule checks per pack (SQL only, no AI calls).
 CREATE OR REFRESH MATERIALIZED VIEW gold_pack_checks
 COMMENT 'One row per pack per automated check. passed = false means the officer must review. Categories: completeness, cross_document, fta_rule, extraction.'
 AS

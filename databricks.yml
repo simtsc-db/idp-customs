@@ -4,8 +4,7 @@ bundle:
 
 variables:
   catalog:
-    description: Unity Catalog catalog
-    default: sg_pubsec_catalog
+    description: Unity Catalog catalog (required)
   schema:
     description: Schema for all demo objects
     default: customs_permit_idp

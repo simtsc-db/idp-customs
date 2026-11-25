@@ -1,16 +1,11 @@
-"""Refresh the Lakebase synced tables after the IDP pipeline (Lakeflow job task).
-
-Synced tables use SNAPSHOT mode (sources are materialized views), so each run
-re-snapshots gold_permit_drafts / gold_pack_checks / gold_permit_items into
-Lakebase Postgres for the officer review app. Waits until all are back ONLINE.
-"""
+"""Job task: re-snapshot the gold tables synced to Lakebase and wait until online."""
 import argparse
 import time
 
 from databricks.sdk import WorkspaceClient
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--catalog", default="sg_pubsec_catalog")
+ap.add_argument("--catalog", required=True)
 ap.add_argument("--schema", default="customs_permit_idp")
 a = ap.parse_args()
 

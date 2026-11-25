@@ -1,8 +1,6 @@
-"""Ask the Genie space its sample questions and write evidence/genie_qa.md.
+"""Ask the Genie space its sample questions; write answers + SQL to evidence/genie_qa.md.
 
 Usage: python3 scripts/genie_check.py <space_id> <profile>
-Uses the Databricks CLI (Genie Conversation API); prints question, status,
-generated SQL and the first result rows for each question.
 """
 import json
 import subprocess

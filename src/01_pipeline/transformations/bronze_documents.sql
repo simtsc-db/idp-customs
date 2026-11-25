@@ -1,8 +1,4 @@
--- Layer: bronze
--- Bronze: every trader document that lands in the inbox is parsed exactly once.
--- ai_parse_document (v2.0) handles PDFs and scanned images (OCR + layout).
--- AI figure descriptions are disabled ('') to keep cost per document low.
-
+-- Bronze: parse each trader document once (ai_parse_document v2: OCR + layout).
 CREATE OR REFRESH STREAMING TABLE bronze_documents
 COMMENT 'One row per trader document received (PDF or scanned image), with the ai_parse_document v2.0 output. Source: UC volume permit_packs/inbox/<pack_id>/.'
 AS SELECT

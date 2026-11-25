@@ -1,8 +1,4 @@
--- Layer: bronze
--- Bronze: every trader document that lands in the inbox is parsed exactly once.
--- ai_parse_document (v2.0) handles PDFs and scanned images (OCR + layout).
--- AI figure descriptions are disabled ('') to keep cost per document low.
-
+-- Reference: FTA origin rules owned by Trade (illustrative, simplified).
 CREATE OR REFRESH MATERIALIZED VIEW ref_fta_rules
 COMMENT 'FTA origin rules used by the automated checks (illustrative, simplified). member_countries is a pipe-separated ISO-2 list.'
 AS SELECT

@@ -1,7 +1,4 @@
--- Layer: gold
--- Gold: pack-level reconciliation, FTA rule checks, auto-populated permit drafts.
--- Pure SQL over persisted extractions: no AI calls here, so re-running is cheap.
-
+-- Gold: permit line items with the CoO origin criterion.
 CREATE OR REFRESH MATERIALIZED VIEW gold_permit_items
 COMMENT 'Permit line items: invoice lines enriched with the CoO origin criterion for the same HS code.'
 AS

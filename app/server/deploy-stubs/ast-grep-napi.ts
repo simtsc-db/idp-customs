@@ -1,6 +1,4 @@
-// Deploy-build stub for @ast-grep/napi (a native module AppKit uses only for
-// dev-time type generation and lint). Production code never calls it; if it
-// ever does, fail loudly instead of silently.
+// Deploy stub for @ast-grep/napi (dev-only); throws if ever called.
 const unavailable = (): never => {
   throw new Error('@ast-grep/napi is not available in the production bundle');
 };

@@ -1,7 +1,4 @@
--- Layer: gold
--- Gold: pack-level reconciliation, FTA rule checks, auto-populated permit drafts.
--- Pure SQL over persisted extractions: no AI calls here, so re-running is cheap.
-
+-- Gold: auto-populated permit draft and review status per pack.
 CREATE OR REFRESH MATERIALIZED VIEW gold_permit_drafts (
   CONSTRAINT one_status EXPECT (status IN ('AUTO_CLEARED', 'NEEDS_REVIEW'))
 )

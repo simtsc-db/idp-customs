@@ -1,12 +1,7 @@
-"""Accuracy and cost scorecard for Permit Pack Check (runs as a Lakeflow job task).
+"""Scorecard job task: extraction accuracy vs ground truth, defect recall, cost per pack.
 
-Compares what the pipeline extracted (silver_*) and flagged (gold_pack_checks)
-against the generator's ground truth, then logs an MLflow run and writes two
-governed tables:
-  eval_field_results  one row per pack x document x field (match yes/no)
-  eval_scorecard      headline metrics, one row per metric and segment
-Cost per pack comes from system.billing.usage for the pipeline (billing lags a
-few hours; reported as NULL until rows arrive, never estimated).
+Writes eval_field_results and eval_scorecard and logs an MLflow run. Cost comes from
+system.billing.usage and stays NULL until billing rows land (never estimated).
 """
 import argparse
 import json
@@ -17,7 +12,7 @@ import pandas as pd
 from pyspark.sql import SparkSession
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--catalog", default="sg_pubsec_catalog")
+ap.add_argument("--catalog", required=True)
 ap.add_argument("--schema", default="customs_permit_idp")
 ap.add_argument("--pipeline_id", required=True)
 ap.add_argument("--experiment", required=True)
@@ -26,7 +21,7 @@ S = f"{a.catalog}.{a.schema}"
 VOL = f"/Volumes/{a.catalog}/{a.schema}/permit_packs"
 spark = SparkSession.builder.getOrCreate()
 
-# ---------------------------------------------------------------- ground truth
+# ground truth
 truth = [json.loads(r.value) for r in spark.read.text(f"{VOL}/ground_truth/packs.jsonl").collect()]
 docs = spark.read.option("header", True).csv(f"{VOL}/ground_truth/documents.csv").toPandas()
 docs["is_scanned"] = docs["is_scanned"].astype(str).str.lower() == "true"
@@ -93,7 +88,7 @@ for t in truth:
                                  extracted=None if pl.get(f) is None else str(pl.get(f)), match=eq(k, tl.get(f), pl.get(f))))
 fr = pd.DataFrame(rows)
 
-# ---------------------------------------------------------------- defect detection
+# defect detection
 DEFECT_CHECK = {"qty_mismatch": "X02", "hs_mismatch": "X03", "coo_issued_late": "R03", "consignee_mismatch": "X05",
                 "value_mismatch": "X04", "not_direct_consignment": "R04", "rvc_below_threshold": "R02",
                 "origin_not_fta_member": "R01"}
@@ -105,7 +100,7 @@ defect_packs = {t["pack_id"] for t in truth if t["defects"]}
 flagged = set(failed)
 clean_packs = {t["pack_id"] for t in truth} - defect_packs
 
-# ---------------------------------------------------------------- cost from billing
+# cost from billing
 cost = spark.sql(f"""
   SELECT round(sum(u.usage_quantity * p.pricing.default), 2) AS usd, round(sum(u.usage_quantity), 3) AS dbu
   FROM system.billing.usage u
@@ -116,7 +111,7 @@ cost = spark.sql(f"""
 """).first()
 usd = float(cost.usd) if cost and cost.usd is not None else None
 
-# ---------------------------------------------------------------- scorecard
+# scorecard
 def acc(df):
     return round(100.0 * df["match"].mean(), 2) if len(df) else None
 

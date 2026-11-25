@@ -1,8 +1,4 @@
--- Layer: bronze
--- Bronze: every trader document that lands in the inbox is parsed exactly once.
--- ai_parse_document (v2.0) handles PDFs and scanned images (OCR + layout).
--- AI figure descriptions are disabled ('') to keep cost per document low.
-
+-- Reference: port of loading to country, for the direct consignment check.
 CREATE OR REFRESH MATERIALIZED VIEW ref_ports
 COMMENT 'Port of loading to ISO-2 country, used for the direct consignment check.'
 AS SELECT lower(port_name) AS port_key, port_name, country_code

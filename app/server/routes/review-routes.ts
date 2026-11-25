@@ -1,6 +1,4 @@
-// Permit review routes.
-// Reads: gold tables synced from Unity Catalog into Lakebase (read-only, schema customs_permit_idp).
-// Writes: officer decisions in the app-owned schema `review_app` (created by the app service principal).
+// Review API: reads synced gold tables, writes officer decisions to review_app.
 import { z } from 'zod';
 import type { Application, Request } from 'express';
 

@@ -1,13 +1,10 @@
--- Governance for Permit Pack Check (idempotent; runs after every pipeline refresh).
--- Column comments feed Genie; tags drive discovery and policy. Data is synthetic.
--- Parameters: :catalog, :schema (job parameters passed to the SQL task).
+-- Governance (idempotent, runs after each refresh): tags plus column comments for Genie.
 
 USE CATALOG IDENTIFIER(:catalog);
 USE SCHEMA IDENTIFIER(:schema);
 
--- ------------------------------------------------------------ tags
--- Governed tag keys (domain, business_unit, layer, sensitivity, classification) use the
--- workspace tag-policy values; customs_classification is a free-form key for the Sen-Norm analogue.
+-- tags
+-- Governed keys use the workspace tag-policy values.
 ALTER SCHEMA IDENTIFIER(:schema) SET TAGS ('domain' = 'operations', 'business_unit' = 'Operations', 'data_origin' = 'synthetic_demo');
 ALTER MATERIALIZED VIEW gold_permit_drafts SET TAGS ('layer' = 'gold', 'classification' = 'confidential', 'customs_classification' = 'sen_norm_simulated');
 ALTER MATERIALIZED VIEW gold_pack_checks   SET TAGS ('layer' = 'gold', 'classification' = 'confidential', 'customs_classification' = 'sen_norm_simulated');
@@ -19,7 +16,7 @@ ALTER TABLE silver_packing_lists SET TAGS ('layer' = 'silver', 'classification' 
 ALTER TABLE silver_certificates_of_origin SET TAGS ('layer' = 'silver', 'classification' = 'confidential');
 ALTER TABLE silver_invoices ALTER COLUMN buyer_uen SET TAGS ('sensitivity' = 'internal', 'business_identifier' = 'uen');
 
--- ------------------------------------------------------------ column comments (Genie context)
+-- column comments (Genie context)
 COMMENT ON COLUMN gold_permit_drafts.pack_id IS 'Trader permit pack identifier (PP-nnnn). One pack = invoice + packing list + Certificate of Origin.';
 COMMENT ON COLUMN gold_permit_drafts.status IS 'AUTO_CLEARED = every automated check passed, permit pre-filled, no officer action; NEEDS_REVIEW = at least one check failed, routed to an officer.';
 COMMENT ON COLUMN gold_permit_drafts.priority IS 'Review priority from the most severe failed check: high (FTA rule or HS code), medium (cross-document mismatch), low (low extraction confidence), none.';

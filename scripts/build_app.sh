@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
-# Build the officer review app (AppKit) into a self-contained deploy folder.
-#
-# Why: in our environment the Databricks Apps build could not fetch packages
-# from the internal npm mirror, and public registries were not allowed. So we
-# install via the mirror locally, inline all runtime dependencies into one
-# server bundle, and deploy app_dist/ with no dependencies to install.
+# Build the AppKit app into app_dist/: dependencies installed from your npm mirror
+# and inlined, so the Apps platform has nothing to install.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/app"
 
-: "${NPM_REGISTRY:?set NPM_REGISTRY to your organisation's npm mirror}"
+: "${NPM_REGISTRY:?set NPM_REGISTRY to your npm mirror}"
 npm ci --registry "$NPM_REGISTRY" --no-audit --no-fund
 npm run typecheck
 npm run lint
