@@ -1,17 +1,46 @@
-// Review API: reads synced gold tables, writes officer decisions to review_app.
+// Review API: reads gold tables through the SQL warehouse (Unity Catalog permissions apply)
+// and keeps officer decisions in Lakebase (schema review_app).
+import { sql } from '@databricks/appkit';
 import { z } from 'zod';
 import type { Application, Request } from 'express';
 
-interface AppKitWithLakebase {
-  lakebase: {
-    query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
-  };
-  server: {
-    extend(fn: (app: Application) => void): void;
-  };
+type Row = Record<string, unknown>;
+type SqlParam = ReturnType<typeof sql.string>;
+
+interface ReviewAppKit {
+  analytics: { query(text: string, params?: Record<string, SqlParam>): Promise<{ data?: Row[] }> };
+  lakebase: { query(text: string, params?: unknown[]): Promise<{ rows: Row[] }> };
+  server: { extend(fn: (app: Application) => void): void };
 }
 
-const SYNCED = 'customs_permit_idp';
+const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const CATALOG = process.env.PERMIT_CATALOG ?? '';
+const SCHEMA = process.env.PERMIT_SCHEMA ?? 'customs_permit_idp';
+if (!IDENT.test(CATALOG) || !IDENT.test(SCHEMA)) {
+  throw new Error('PERMIT_CATALOG and PERMIT_SCHEMA must be set to valid identifiers');
+}
+const T = (table: string) => `\`${CATALOG}\`.\`${SCHEMA}\`.\`${table}\``;
+
+const NUMERIC = new Set([
+  'exception_count', 'fta_rule_exceptions', 'cross_document_exceptions', 'declared_value',
+  'min_field_confidence', 'item_count', 'line_no', 'quantity', 'unit_price', 'amount', 'rvc_percent',
+  'extraction_confidence', 'packs', 'auto_cleared', 'needs_review', 'high_priority', 'fta_rule_packs',
+]);
+const BOOLEAN = new Set(['passed']);
+
+// The warehouse returns JSON_ARRAY values as strings; restore numbers and booleans.
+function typed(rows: Row[] | undefined): Row[] {
+  return (rows ?? []).map((r) =>
+    Object.fromEntries(
+      Object.entries(r).map(([k, v]) => {
+        if (v === null || v === undefined) return [k, null];
+        if (NUMERIC.has(k)) return [k, Number(v)];
+        if (BOOLEAN.has(k)) return [k, v === true || v === 'true'];
+        return [k, v];
+      }),
+    ),
+  );
+}
 
 const SETUP_SQL = [
   `CREATE SCHEMA IF NOT EXISTS review_app`,
@@ -42,13 +71,16 @@ function officer(req: Request): string {
   return req.header('x-forwarded-email') ?? req.header('x-forwarded-user') ?? 'local-dev@example.com';
 }
 
-export async function setupReviewRoutes(appkit: AppKitWithLakebase) {
+export async function setupReviewRoutes(appkit: ReviewAppKit) {
   try {
     for (const stmt of SETUP_SQL) await appkit.lakebase.query(stmt);
     console.log('[review] schema review_app ready');
   } catch (err) {
     console.error('[review] schema setup failed:', (err as Error).message);
   }
+
+  const gold = async (text: string, params?: Record<string, SqlParam>) =>
+    typed((await appkit.analytics.query(text, params)).data);
 
   appkit.server.extend((app) => {
     app.get('/api/whoami', (req, res) => {
@@ -57,39 +89,48 @@ export async function setupReviewRoutes(appkit: AppKitWithLakebase) {
 
     app.get('/api/summary', async (_req, res) => {
       try {
-        const { rows } = await appkit.lakebase.query(`
-          SELECT count(*)::int                                            AS packs,
-                 count(*) FILTER (WHERE status = 'AUTO_CLEARED')::int     AS auto_cleared,
-                 count(*) FILTER (WHERE status = 'NEEDS_REVIEW')::int     AS needs_review,
-                 count(*) FILTER (WHERE priority = 'high')::int           AS high_priority,
-                 count(*) FILTER (WHERE fta_rule_exceptions > 0)::int     AS fta_rule_packs,
-                 max(drafted_at)                                          AS drafted_at,
-                 (SELECT count(DISTINCT pack_id)::int FROM review_app.officer_decisions) AS decided
-          FROM ${SYNCED}.lb_gold_permit_drafts`);
-        res.json(rows[0]);
+        const [rows, decided] = await Promise.all([
+          gold(`SELECT count(*)                                AS packs,
+                       count_if(status = 'AUTO_CLEARED')       AS auto_cleared,
+                       count_if(status = 'NEEDS_REVIEW')       AS needs_review,
+                       count_if(priority = 'high')             AS high_priority,
+                       count_if(fta_rule_exceptions > 0)       AS fta_rule_packs,
+                       max(drafted_at)                         AS drafted_at
+                FROM ${T('gold_permit_drafts')}`),
+          appkit.lakebase.query('SELECT count(DISTINCT pack_id)::int AS decided FROM review_app.officer_decisions'),
+        ]);
+        res.json({ ...rows[0], decided: decided.rows[0]?.decided ?? 0 });
       } catch (err) {
         console.error('summary failed', err);
-        res.status(500).json({ error: 'Could not load summary from Lakebase' });
+        res.status(500).json({ error: 'Could not load the summary' });
       }
     });
 
     app.get('/api/packs', async (req, res) => {
       const status = z.enum(['NEEDS_REVIEW', 'AUTO_CLEARED', 'ALL']).catch('NEEDS_REVIEW').parse(req.query.status);
       try {
-        const { rows } = await appkit.lakebase.query(
-          `SELECT d.pack_id, d.status, d.priority, d.exception_count, d.failed_checks, d.importer_name,
-                  d.exporter_name, d.exporter_country, d.preferential_scheme, d.declared_value, d.currency,
-                  d.min_field_confidence, ld.decision AS last_decision, ld.officer AS decided_by, ld.decided_at
-           FROM ${SYNCED}.lb_gold_permit_drafts d
-           LEFT JOIN LATERAL (
-             SELECT decision, officer, decided_at FROM review_app.officer_decisions o
-             WHERE o.pack_id = d.pack_id ORDER BY decided_at DESC LIMIT 1) ld ON true
-           WHERE ($1 = 'ALL' OR d.status = $1)
-           ORDER BY CASE d.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 ELSE 3 END, d.pack_id
-           LIMIT 200`,
-          [status],
+        const [packs, latest] = await Promise.all([
+          gold(
+            `SELECT pack_id, status, priority, exception_count, failed_checks, importer_name, exporter_name,
+                    exporter_country, preferential_scheme, declared_value, currency, min_field_confidence
+             FROM ${T('gold_permit_drafts')}
+             WHERE :status = 'ALL' OR status = :status
+             ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 ELSE 3 END, pack_id
+             LIMIT 200`,
+            { status: sql.string(status) },
+          ),
+          appkit.lakebase.query(
+            `SELECT DISTINCT ON (pack_id) pack_id, decision, officer, decided_at
+             FROM review_app.officer_decisions ORDER BY pack_id, decided_at DESC`,
+          ),
+        ]);
+        const byPack = new Map(latest.rows.map((d) => [d.pack_id as string, d]));
+        res.json(
+          packs.map((p) => {
+            const d = byPack.get(p.pack_id as string);
+            return { ...p, last_decision: d?.decision ?? null, decided_by: d?.officer ?? null, decided_at: d?.decided_at ?? null };
+          }),
         );
-        res.json(rows);
       } catch (err) {
         console.error('packs failed', err);
         res.status(500).json({ error: 'Could not load the review queue' });
@@ -102,20 +143,21 @@ export async function setupReviewRoutes(appkit: AppKitWithLakebase) {
         res.status(400).json({ error: 'Invalid pack id' });
         return;
       }
+      const p = { pack_id: sql.string(id.data) };
       try {
         const [draft, checks, items, decisions] = await Promise.all([
-          appkit.lakebase.query(`SELECT * FROM ${SYNCED}.lb_gold_permit_drafts WHERE pack_id = $1`, [id.data]),
-          appkit.lakebase.query(
+          gold(`SELECT * FROM ${T('gold_permit_drafts')} WHERE pack_id = :pack_id`, p),
+          gold(
             `SELECT check_code, check_name, category, severity, passed, detail
-             FROM ${SYNCED}.lb_gold_pack_checks WHERE pack_id = $1
+             FROM ${T('gold_pack_checks')} WHERE pack_id = :pack_id
              ORDER BY passed, CASE severity WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, check_code`,
-            [id.data],
+            p,
           ),
-          appkit.lakebase.query(
+          gold(
             `SELECT line_no, hs_code, description, quantity, unit, unit_price, amount, currency,
                     origin_criterion, rvc_percent, extraction_confidence
-             FROM ${SYNCED}.lb_gold_permit_items WHERE pack_id = $1 ORDER BY line_no`,
-            [id.data],
+             FROM ${T('gold_permit_items')} WHERE pack_id = :pack_id ORDER BY line_no`,
+            p,
           ),
           appkit.lakebase.query(
             `SELECT decision, corrected_field, corrected_value, note, officer, decided_at
@@ -123,11 +165,11 @@ export async function setupReviewRoutes(appkit: AppKitWithLakebase) {
             [id.data],
           ),
         ]);
-        if (draft.rows.length === 0) {
+        if (draft.length === 0) {
           res.status(404).json({ error: 'Pack not found' });
           return;
         }
-        res.json({ draft: draft.rows[0], checks: checks.rows, items: items.rows, decisions: decisions.rows });
+        res.json({ draft: draft[0], checks, items, decisions: decisions.rows });
       } catch (err) {
         console.error('pack detail failed', err);
         res.status(500).json({ error: 'Could not load pack detail' });

@@ -1,10 +1,9 @@
--- Governance (idempotent, runs after each refresh): tags plus column comments for Genie.
+-- Governance (idempotent, runs after each refresh): tags, Genie column comments, app grants.
 
 USE CATALOG IDENTIFIER(:catalog);
 USE SCHEMA IDENTIFIER(:schema);
 
 -- tags
--- Governed keys use the workspace tag-policy values.
 ALTER SCHEMA IDENTIFIER(:schema) SET TAGS ('domain' = 'operations', 'business_unit' = 'Operations', 'data_origin' = 'synthetic_demo');
 ALTER MATERIALIZED VIEW gold_permit_drafts SET TAGS ('layer' = 'gold', 'classification' = 'confidential', 'customs_classification' = 'sen_norm_simulated');
 ALTER MATERIALIZED VIEW gold_pack_checks   SET TAGS ('layer' = 'gold', 'classification' = 'confidential', 'customs_classification' = 'sen_norm_simulated');
@@ -37,3 +36,9 @@ COMMENT ON COLUMN gold_pack_checks.check_code IS 'C01 completeness; X01-X05 cros
 COMMENT ON COLUMN gold_pack_checks.passed IS 'false = the check failed and the officer must review the pack.';
 COMMENT ON COLUMN gold_pack_checks.category IS 'completeness, cross_document, fta_rule or extraction.';
 COMMENT ON COLUMN gold_pack_checks.detail IS 'Human-readable evidence for the check result, quoting the extracted values.';
+
+-- App access: the review app's service principal reads exactly the three gold tables.
+EXECUTE IMMEDIATE 'GRANT USE SCHEMA ON SCHEMA ' || :schema || ' TO `' || IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp')) || '`';
+EXECUTE IMMEDIATE 'GRANT SELECT ON TABLE gold_permit_drafts TO `' || IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp')) || '`';
+EXECUTE IMMEDIATE 'GRANT SELECT ON TABLE gold_pack_checks TO `' || IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp')) || '`';
+EXECUTE IMMEDIATE 'GRANT SELECT ON TABLE gold_permit_items TO `' || IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp')) || '`';

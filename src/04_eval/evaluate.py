@@ -1,7 +1,7 @@
 """Scorecard job task: extraction accuracy vs ground truth, defect recall, cost per pack.
 
 Writes eval_field_results and eval_scorecard and logs an MLflow run. Cost comes from
-system.billing.usage and stays NULL until billing rows land (never estimated).
+system.billing.usage at list price (NULL until usage is recorded; never estimated).
 """
 import argparse
 import json

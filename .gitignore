@@ -10,8 +10,9 @@ app/dist/
 app/client/dist/
 app/.env
 app_dist/
-# customer-specific material stays local (public repo)
+# local working material, not part of the demo
 docs/
 deck/
 evidence/
 .databricks/
+.isaac/
