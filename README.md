@@ -58,6 +58,9 @@ databricks bundle run permit_review_app -p <profile> --var catalog=<catalog>
 The app's warehouse, volume and Lakebase access are app resources; the job's
 governance task grants it SELECT on the three gold tables. No manual grants.
 
+Teardown: `databricks bundle destroy -p <profile> --var catalog=<catalog>`, then delete
+the Genie space (published by the job, so not managed by the bundle).
+
 ## Demo (10 min)
 
 1. **App**: open pack PP-0017. The ATIGA claim fails two rules: loaded in Shanghai (R04) and RVC 34% < 40% (R02). Request info from the trader.

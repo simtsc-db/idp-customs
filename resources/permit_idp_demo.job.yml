@@ -16,10 +16,7 @@ resources:
           spec:
             environment_version: "4"
             dependencies:
-              - /Volumes/${var.catalog}/${var.schema}/libs/datagen/charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
-              - /Volumes/${var.catalog}/${var.schema}/libs/datagen/pillow-13.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
-              - /Volumes/${var.catalog}/${var.schema}/libs/datagen/pypdfium2-5.15.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-              - /Volumes/${var.catalog}/${var.schema}/libs/datagen/reportlab-5.1.0-py3-none-any.whl
+              - -r /Volumes/${var.catalog}/${var.schema}/libs/datagen/requirements.txt
         - environment_key: eval
           spec:
             environment_version: "4"

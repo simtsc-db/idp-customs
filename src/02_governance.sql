@@ -38,7 +38,14 @@ COMMENT ON COLUMN gold_pack_checks.category IS 'completeness, cross_document, ft
 COMMENT ON COLUMN gold_pack_checks.detail IS 'Human-readable evidence for the check result, quoting the extracted values.';
 
 -- App access: the review app's service principal reads exactly the three gold tables.
-EXECUTE IMMEDIATE 'GRANT USE SCHEMA ON SCHEMA ' || :schema || ' TO `' || IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp')) || '`';
-EXECUTE IMMEDIATE 'GRANT SELECT ON TABLE gold_permit_drafts TO `' || IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp')) || '`';
-EXECUTE IMMEDIATE 'GRANT SELECT ON TABLE gold_pack_checks TO `' || IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp')) || '`';
-EXECUTE IMMEDIATE 'GRANT SELECT ON TABLE gold_permit_items TO `' || IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp')) || '`';
+DECLARE OR REPLACE VARIABLE app_principal STRING
+  DEFAULT IF(:app_sp RLIKE '^[0-9a-fA-F-]{36}$', :app_sp, raise_error('invalid app_sp'));
+DECLARE OR REPLACE VARIABLE grant_sql STRING;
+SET VAR grant_sql = 'GRANT USE SCHEMA ON SCHEMA ' || :schema || ' TO `' || app_principal || '`';
+EXECUTE IMMEDIATE grant_sql;
+SET VAR grant_sql = 'GRANT SELECT ON TABLE gold_permit_drafts TO `' || app_principal || '`';
+EXECUTE IMMEDIATE grant_sql;
+SET VAR grant_sql = 'GRANT SELECT ON TABLE gold_pack_checks TO `' || app_principal || '`';
+EXECUTE IMMEDIATE grant_sql;
+SET VAR grant_sql = 'GRANT SELECT ON TABLE gold_permit_items TO `' || app_principal || '`';
+EXECUTE IMMEDIATE grant_sql;
