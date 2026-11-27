@@ -16,4 +16,4 @@ resources:
       schema_name: ${resources.schemas.permit_idp.name}
       name: libs
       volume_type: MANAGED
-      comment: "Pinned Python wheels (from the Databricks PyPI proxy) for the serverless datagen task"
+      comment: "Pinned Python wheels for the serverless datagen task"

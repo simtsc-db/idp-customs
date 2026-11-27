@@ -1,46 +1,12 @@
-# Lakebase for the review app: gold tables synced read-only (lb_*); the app owns schema review_app.
+# Lakebase for the review app's officer decisions (schema review_app, owned by the app).
 resources:
   postgres_projects:
     permit_review:
       project_id: ${var.lakebase_project}
       display_name: "Customs Permit Pack Check (demo)"
       pg_version: 17
+      purge_on_delete: true  # demo data is synthetic; destroy removes it permanently
       default_endpoint_settings:
         autoscaling_limit_min_cu: 0.5
         autoscaling_limit_max_cu: 2
         suspend_timeout_duration: "300s"
-
-  postgres_synced_tables:
-    review_permit_drafts:
-      synced_table_id: ${var.catalog}.${var.schema}.lb_gold_permit_drafts
-      source_table_full_name: ${var.catalog}.${var.schema}.gold_permit_drafts
-      primary_key_columns: [pack_id]
-      scheduling_policy: SNAPSHOT
-      branch: ${resources.postgres_projects.permit_review.name}/branches/production
-      postgres_database: databricks_postgres
-      create_database_objects_if_missing: true
-      new_pipeline_spec:
-        storage_catalog: ${var.catalog}
-        storage_schema: ${var.schema}
-    review_pack_checks:
-      synced_table_id: ${var.catalog}.${var.schema}.lb_gold_pack_checks
-      source_table_full_name: ${var.catalog}.${var.schema}.gold_pack_checks
-      primary_key_columns: [pack_id, check_code]
-      scheduling_policy: SNAPSHOT
-      branch: ${resources.postgres_projects.permit_review.name}/branches/production
-      postgres_database: databricks_postgres
-      create_database_objects_if_missing: true
-      new_pipeline_spec:
-        storage_catalog: ${var.catalog}
-        storage_schema: ${var.schema}
-    review_permit_items:
-      synced_table_id: ${var.catalog}.${var.schema}.lb_gold_permit_items
-      source_table_full_name: ${var.catalog}.${var.schema}.gold_permit_items
-      primary_key_columns: [pack_id, line_no]
-      scheduling_policy: SNAPSHOT
-      branch: ${resources.postgres_projects.permit_review.name}/branches/production
-      postgres_database: databricks_postgres
-      create_database_objects_if_missing: true
-      new_pipeline_spec:
-        storage_catalog: ${var.catalog}
-        storage_schema: ${var.schema}

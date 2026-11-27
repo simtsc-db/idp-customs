@@ -2,22 +2,21 @@ resources:
   jobs:
     permit_idp_demo:
       name: "Permit Pack Check - end-to-end demo run"
-      description: "Synthetic trader permit packs -> UC volume -> Lakeflow SDP medallion (parse, classify, extract, FTA checks) -> accuracy and cost scorecard (MLflow)."
+      description: "Synthetic trader permit packs -> UC volume -> Lakeflow SDP medallion (parse, classify, extract, FTA checks) -> governance + app grants -> Genie space -> accuracy and cost scorecard (MLflow)."
       max_concurrent_runs: 1
       parameters:
         - name: catalog
           default: ${var.catalog}
         - name: schema
           default: ${var.schema}
+        - name: app_sp
+          default: ${resources.apps.permit_review_app.service_principal_client_id}
       environments:
         - environment_key: datagen
           spec:
             environment_version: "4"
             dependencies:
-              - /Volumes/${var.catalog}/${var.schema}/libs/datagen/charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
-              - /Volumes/${var.catalog}/${var.schema}/libs/datagen/pillow-13.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
-              - /Volumes/${var.catalog}/${var.schema}/libs/datagen/pypdfium2-5.15.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-              - /Volumes/${var.catalog}/${var.schema}/libs/datagen/reportlab-5.1.0-py3-none-any.whl
+              - -r /Volumes/${var.catalog}/${var.schema}/libs/datagen/requirements.txt
         - environment_key: eval
           spec:
             environment_version: "4"
@@ -43,13 +42,17 @@ resources:
             parameters:
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
-        - task_key: refresh_lakebase_synced_tables
+              app_sp: "{{job.parameters.app_sp}}"
+        - task_key: publish_genie_space
           depends_on:
-            - task_key: refresh_idp_pipeline
+            - task_key: apply_governance
           environment_key: eval
           spark_python_task:
-            python_file: ../src/03_refresh_lakebase.py
-            parameters: ["--catalog", "{{job.parameters.catalog}}", "--schema", "{{job.parameters.schema}}"]
+            python_file: ../src/03_genie/publish_genie.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--schema", "{{job.parameters.schema}}",
+                         "--warehouse_id", "${var.warehouse_id}",
+                         "--parent_path", "/Workspace/Users/${workspace.current_user.userName}",
+                         "--spec", "${workspace.file_path}/src/03_genie/permit_review.genie.json"]
         - task_key: evaluate_accuracy_and_cost
           depends_on:
             - task_key: refresh_idp_pipeline

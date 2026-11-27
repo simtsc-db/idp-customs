@@ -2,14 +2,33 @@ resources:
   apps:
     permit_review_app:
       name: permit-review
-      description: "Officer review queue for trader permit packs (synthetic demo). Reads gold tables synced to Lakebase; writes officer decisions to Lakebase."
+      description: "Officer review queue for trader permit packs. Reads gold tables through the SQL warehouse; writes officer decisions to Lakebase."
       source_code_path: ../app_dist  # built by scripts/build_app.sh
       lifecycle:
         started: true
+      config:
+        command: ["node", "server.js"]
+        env:
+          - name: NODE_ENV
+            value: production
+          - name: PERMIT_CATALOG
+            value: ${var.catalog}
+          - name: PERMIT_SCHEMA
+            value: ${var.schema}
+          - name: DATABRICKS_WAREHOUSE_ID
+            value_from: sql_warehouse
+          - name: DATABRICKS_VOLUME_FILES
+            value_from: files
+          - name: LAKEBASE_ENDPOINT
+            value_from: postgres
       resources:
+        - name: sql_warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE
         - name: files
           uc_securable:
-            securable_full_name: ${var.catalog}.${var.schema}.permit_packs
+            securable_full_name: ${resources.volumes.permit_packs.catalog_name}.${resources.volumes.permit_packs.schema_name}.${resources.volumes.permit_packs.name}
             securable_type: VOLUME
             permission: READ_VOLUME
         - name: postgres
