@@ -8,9 +8,9 @@ Certificate of Origin.
 
 | KPI | Target | Result |
 |---|---|---|
-| Field extraction accuracy | >= 97% | 99.80% (98.67% on scans) |
+| Field extraction accuracy | >= 97% | 99.90% (99.56% on scans) |
 | Planted defects caught | >= 95% | 100% (14 of 14) |
-| Packs auto-cleared | n/a | 60% (24 of 40) |
+| Packs auto-cleared | n/a | 65% (26 of 40) |
 | Cost per pack | measured | from `system.billing` at list price |
 
 Value (assumption): 50,000 packs/yr x 15 min = 12,500 h (~S$750K at S$60/h);
@@ -65,7 +65,7 @@ the Genie space (published by the job, so not managed by the bundle).
 
 1. **App**: open pack PP-0017. The ATIGA claim fails two rules: loaded in Shanghai (R04) and RVC 34% < 40% (R02). Request info from the trader.
 2. **Genie**: "Which importers had the most FTA origin-rule exceptions in the last 90 days?"
-3. **Scorecard**: MLflow experiment `permit_idp_eval`, including the 4 wrong fields.
+3. **Scorecard**: MLflow experiment `permit_idp_eval`, including the 2 wrong fields.
 
 ## Limitations
 
